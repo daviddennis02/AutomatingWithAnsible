@@ -1,0 +1,72 @@
+---
+- name: intranet services
+  hosts: all
+  become: yes
+  become_user: root
+  handlers:
+    - name: restart_sshd
+      service:
+        name: sshd
+        state: restarted
+  tasks:
+  # Install editor utility
+  - name: install
+    package:
+      state: latest
+      name:
+        - bash-completion
+        - vim
+        - nano
+    
+  # Create a new user
+  - name: Create new user (smith)
+    user:
+      name: smith
+      state: present
+      password: "{{ 'Password100' | password_hash('sha512') }}"
+      update_password: on_create
+      shell: /bin/bash
+  
+  - name: Edit SSHD Config
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^PasswordAuthentication '
+      insertafter: '#PasswordAuthentication'
+      line: 'PasswordAuthentication yes'
+    notify: restart_sshd
+  - name: Add sudo rights for user smith
+    copy:
+      dest: /etc/sudoers.d/smith
+      content: "smith ALL=(root) NOPASSWD: ALL"
+      backup: true
+  
+  # Install latest Apache webserver (httpd)
+  - name: latest httpd version installed
+    yum:
+      name: httpd
+      state: latest
+  - name: latest firewalld version installed
+    yum: 
+      name: firewalld
+      state: latest
+  - name: httpd enabled and running
+    service: 
+      name: httpd
+      enabled: true
+      state: started
+
+  # Enable firewalld service
+  - name: firewalld enabled and running
+    service: 
+      name: firewalld
+      enabled: true
+      state: started
+  - name: firewalld permits http service
+    firewalld:
+      service: http
+      permanent: true
+      state: enabled
+  - name: restart firewalld
+    service:
+      name: firewalld
+      state: restarted
