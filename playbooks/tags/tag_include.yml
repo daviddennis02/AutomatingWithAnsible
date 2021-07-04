@@ -1,6 +1,0 @@
----
-name: tags with include demo
-hosts: centos
-- include: install.yml
-  tags:
-    - install_all
